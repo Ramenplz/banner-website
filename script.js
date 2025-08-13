@@ -24,8 +24,11 @@ document.addEventListener('DOMContentLoaded', function() {
     async function fetchBanners() {
         try {
             const response = await fetch(BANNER_API_URL, {
+                method: 'GET',
+                mode: 'cors', // เพิ่มบรรทัดนี้
                 headers: {
-                    'Authorization': `Bearer ${API_KEY}`
+                    'Authorization': `Bearer ${API_KEY}`,
+                    'Content-Type': 'application/json'
                 }
             });
 
@@ -52,6 +55,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch (error) {
             console.error('เกิดข้อผิดพลาด:', error);
+            // แสดงข้อความผิดพลาดให้ผู้ใช้เห็น
+            const errorElement = document.createElement('div');
+            errorElement.className = 'error-message';
+            errorElement.textContent = 'ไม่สามารถโหลดแบนเนอร์ได้: ' + error.message;
+            document.querySelector('.banner-container').appendChild(errorElement);
+
             banners = [{ imageUrl: 'https://via.placeholder.com/1200x400', alt: 'แบนเนอร์เริ่มต้น' }];
             renderCarousel();
         }
