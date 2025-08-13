@@ -23,40 +23,37 @@ document.addEventListener('DOMContentLoaded', function() {
     // ฟังก์ชันดึงข้อมูลแบนเนอร์จาก API
     async function fetchBanners() {
         try {
-            // ลองทั้ง 3 วิธีเรียก API
             let response;
+            const options = {
+                headers: {
+                    'X-API-KEY': API_KEY,
+                    'Accept': 'application/json'
+                }
+            };
 
             // วิธีที่ 1: Header
-            response = await fetch(BANNER_API_URL, {
-                headers: { 'X-API-KEY': API_KEY }
-            });
+            response = await fetch(BANNER_API_URL, options);
 
-            // วิธีที่ 2: URL Parameter
-            if (response.status === 401) {
+            // วิธีที่ 2: URL Parameter (ถ้า method 1 ล้มเหลว)
+            if (!response.ok) {
                 response = await fetch(`${BANNER_API_URL}?api_key=${API_KEY}`);
             }
 
-            // วิธีที่ 3: No-CORS
-            if (response.status === 401) {
-                response = await fetch(BANNER_API_URL, {
-                    mode: 'no-cors',
-                    headers: { 'X-API-KEY': API_KEY }
-                });
+            // ตรวจสอบ response
+            if (!response.ok) {
+                throw new Error('API Request Failed');
             }
-
-            if (!response.ok) throw new Error('API Request Failed');
 
             const data = await response.json();
             return data.banners || [];
 
         } catch (error) {
             console.error('API Error:', error);
-            return [ // ข้อมูลสำรอง
-                {
-                    imageUrl: "https://via.placeholder.com/1200x400/FF5733/FFFFFF?text=Banner+1",
-                    alt: "Default Banner 1"
-                }
-            ];
+            // ข้อมูลสำรอง
+            return [{
+                imageUrl: "https://via.placeholder.com/1200x400/FF5733/FFFFFF?text=Banner+1",
+                alt: "Default Banner 1"
+            }];
         }
     }
 
@@ -83,6 +80,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // อัพเดทตำแหน่งสไลด์แรก
         updateCarousel();
+
+        // เริ่มการเลื่อนอัตโนมัติ
+        startAutoSlide();
     }
 
     // ไปยังสไลด์ที่กำหนด
@@ -118,6 +118,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // เริ่มการเลื่อนอัตโนมัติ
     function startAutoSlide() {
         if (banners.length > 1) {
+            clearInterval(slideInterval); // เคลียร์ interval ก่อนหน้า
             slideInterval = setInterval(nextSlide, 5000); // เลื่อนทุก 5 วินาที
         }
     }
@@ -140,8 +141,16 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // เริ่มต้นการทำงาน
-    fetchBanners();
+    async function initialize() {
+        banners = await fetchBanners();
+        renderCarousel();
 
-    // อัพเดทแบนเนอร์ทุก 1 นาที
-    setInterval(fetchBanners, 60 * 1000);
-}); // ปิด DOMContentLoaded ที่นี่เพียงครั้งเดียว
+        // อัพเดทแบนเนอร์ทุก 1 นาที
+        setInterval(async() => {
+            banners = await fetchBanners();
+            renderCarousel();
+        }, 60 * 1000);
+    }
+
+    initialize();
+});
