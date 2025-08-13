@@ -23,49 +23,40 @@ document.addEventListener('DOMContentLoaded', function() {
     // ฟังก์ชันดึงข้อมูลแบนเนอร์จาก API
     async function fetchBanners() {
         try {
-            const response = await fetch(BANNER_API_URL, {
-                headers: {
-                    'X-API-KEY': API_KEY
-                }
+            // ลองทั้ง 3 วิธีเรียก API
+            let response;
+
+            // วิธีที่ 1: Header
+            response = await fetch(BANNER_API_URL, {
+                headers: { 'X-API-KEY': API_KEY }
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'ไม่สามารถดึงข้อมูลแบนเนอร์ได้');
+            // วิธีที่ 2: URL Parameter
+            if (response.status === 401) {
+                response = await fetch(`${BANNER_API_URL}?api_key=${API_KEY}`);
             }
+
+            // วิธีที่ 3: No-CORS
+            if (response.status === 401) {
+                response = await fetch(BANNER_API_URL, {
+                    mode: 'no-cors',
+                    headers: { 'X-API-KEY': API_KEY }
+                });
+            }
+
+            if (!response.ok) throw new Error('API Request Failed');
 
             const data = await response.json();
-
-            if (!data || !Array.isArray(data.banners)) {
-                throw new Error('รูปแบบข้อมูลไม่ถูกต้อง');
-            }
-
-            banners = data.banners;
-            renderCarousel();
-            startAutoSlide();
+            return data.banners || [];
 
         } catch (error) {
-            console.error('เกิดข้อผิดพลาด:', error);
-
-            // สร้างข้อความแสดง error
-            const errorElement = document.createElement('div');
-            errorElement.className = 'api-error';
-            errorElement.innerHTML = `
-                <p>ไม่สามารถโหลดแบนเนอร์ได้</p>
-                <p>สาเหตุ: ${error.message}</p>
-                <p>ลองตรวจสอบ API Key หรือติดต่อผู้ดูแลระบบ</p>
-            `;
-
-            // แสดง error ในหน้าเว็บ
-            const container = document.querySelector('.banner-container');
-            container.insertBefore(errorElement, container.firstChild);
-
-            // ใช้ข้อมูลตัวอย่างแทน
-            banners = [{
-                imageUrl: 'https://via.placeholder.com/1200x400/FF0000/FFFFFF?text=Error+Loading+Banner',
-                alt: 'แบนเนอร์ผิดพลาด'
-            }];
-            renderCarousel();
+            console.error('API Error:', error);
+            return [ // ข้อมูลสำรอง
+                {
+                    imageUrl: "https://via.placeholder.com/1200x400/FF5733/FFFFFF?text=Banner+1",
+                    alt: "Default Banner 1"
+                }
+            ];
         }
     }
 
